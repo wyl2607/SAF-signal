@@ -1,0 +1,19 @@
+[Unit]
+Description=JetScope Next.js Web Frontend
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/jetscope/apps/web
+Environment=NODE_ENV=production
+Environment=JETSCOPE_API_BASE_URL=http://127.0.0.1:8000
+Environment=PORT=3000
+ExecStart=/opt/jetscope/node_modules/.bin/next start --hostname 127.0.0.1 --port 3000
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/jetscope-web.log
+StandardError=append:/var/log/jetscope-web.log
+
+[Install]
+WantedBy=multi-user.target
