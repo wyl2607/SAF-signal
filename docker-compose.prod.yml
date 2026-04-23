@@ -1,0 +1,17 @@
+services:
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: jetscope-api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      JETSCOPE_DATABASE_URL: sqlite:///./data/market.db
+      JETSCOPE_ADMIN_TOKEN: ${JETSCOPE_ADMIN_TOKEN}
+      JETSCOPE_APP_ENV: production
+      JETSCOPE_MARKET_REFRESH_INTERVAL_SECONDS: "600"
+      JETSCOPE_SQLITE_PATH: ./data/market.db
+    volumes:
+      - ./data:/app/data
