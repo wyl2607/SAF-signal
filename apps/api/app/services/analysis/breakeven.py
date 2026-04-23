@@ -1,14 +1,11 @@
 from app.schemas.analysis import BreakevenStatus, TippingPointAssessment
-from app.services.analysis.pathway_costs import get_pathway_cost
-
-EUR_TO_USD = 1.08
-FOSSIL_JET_EMISSIONS_KG_PER_L = 2.5
-
-
-def _carbon_credit_usd_per_l(carbon_price_eur_per_t: float, carbon_reduction_pct: float) -> float:
-    carbon_price_usd_per_t = carbon_price_eur_per_t * EUR_TO_USD
-    avoided_tons_per_l = (FOSSIL_JET_EMISSIONS_KG_PER_L / 1000.0) * (carbon_reduction_pct / 100.0)
-    return carbon_price_usd_per_t * avoided_tons_per_l
+from app.services.analysis.pathway_costs import (
+    EUR_TO_USD,
+    FOSSIL_JET_EMISSIONS_KG_PER_L,
+    carbon_credit_usd_per_l,
+    effective_saf_cost,
+    get_pathway_cost,
+)
 
 
 def _status_for_spread(spread_pct: float) -> BreakevenStatus:
@@ -29,9 +26,14 @@ def compute_tipping_point(
     pathway_key: str = "hefa",
 ) -> TippingPointAssessment:
     pathway = get_pathway_cost(pathway_key)
-    carbon_credit = _carbon_credit_usd_per_l(carbon_price_eur_per_t, pathway.carbon_reduction_pct)
+    carbon_credit = carbon_credit_usd_per_l(carbon_price_eur_per_t, pathway.carbon_reduction_pct)
     effective_support = (subsidy_usd_per_l + carbon_credit) * (blend_rate_pct / 100.0)
-    net_saf_cost = pathway.midpoint_usd_per_l - effective_support
+    net_saf_cost = effective_saf_cost(
+        pathway_key,
+        carbon_price_eur_per_t=carbon_price_eur_per_t,
+        subsidy_usd_per_l=subsidy_usd_per_l,
+        blend_rate_pct=blend_rate_pct,
+    )
     spread_usd_per_l = net_saf_cost - fossil_jet_usd_per_l
     spread_pct = (spread_usd_per_l / fossil_jet_usd_per_l) * 100.0
     return TippingPointAssessment(
@@ -47,3 +49,14 @@ def compute_tipping_point(
         spread_pct=spread_pct,
         status=_status_for_spread(spread_pct),
     )
+
+
+def compute_breakeven_oil_price(
+    *,
+    saf_effective_usd_per_l: float,
+    jet_proxy_slope: float,
+    jet_proxy_intercept: float,
+) -> float:
+    if jet_proxy_slope <= 0:
+        raise ValueError("jet_proxy_slope must be > 0")
+    return max(0.0, (saf_effective_usd_per_l - jet_proxy_intercept) / jet_proxy_slope)

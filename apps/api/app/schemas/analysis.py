@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 BreakevenStatus = Literal["uneconomic", "inflection", "marginal_switch", "dominant"]
 TippingPointSignal = Literal["saf_cost_advantaged", "switch_window_opening", "fossil_still_advantaged"]
 AirlineDecisionSignal = Literal["switch_window_opening", "capacity_stress_dominant", "incremental_adjustment"]
+TippingEventType = Literal["CRITICAL", "ALERT", "CROSSOVER"]
 
 
 class PathwayCostBand(BaseModel):
@@ -88,3 +89,14 @@ class AirlineDecisionResponse(BaseModel):
     inputs: AirlineDecisionInputs
     probabilities: AirlineDecisionProbabilities
     signal: AirlineDecisionSignal
+
+
+class TippingEventResponse(BaseModel):
+    id: str
+    event_type: TippingEventType
+    saf_pathway: str
+    fossil_price_usd_per_l: float = Field(gt=0)
+    saf_effective_cost_usd_per_l: float = Field(gt=0)
+    gap_usd_per_l: float
+    observed_at: datetime
+    metadata: dict = Field(default_factory=dict)
