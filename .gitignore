@@ -1,0 +1,29 @@
+data/local-preferences.json
+apps/web/node_modules
+apps/web/.next
+apps/web/.turbo
+apps/api/.venv
+apps/api/**/__pycache__/
+apps/api/**/*.pyc
+apps/api/.pytest_cache
+apps/api/.mypy_cache
+apps/api/.ruff_cache
+infra/postgres-data
+.omx
+SAFvsOil-notion-handoff-*.tar.gz
+docs/notion-opus-code-bundle-*.md
+docs/notion-opus-core-bundle-*.md
+docs/notion-opus-manifest-*.txt
+
+# Secrets and credentials
+.env
+.env.*
+!.env.*.example
+
+# Workspace root ignore has `Public/`; on macOS case-insensitive FS this can
+# unintentionally hide this project's `public/` assets. Force-include them.
+!public/
+!public/**
+node_modules
+apps/*/node_modules
+packages/*/node_modules
