@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 import httpx
@@ -47,7 +47,7 @@ class StockDaysCoverage(BaseModel):
     freshness_seconds: int = Field(..., ge=0)
     error_code: Optional[str] = None
     source_status: SourceStatus
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class IEAAdapter(DataSourceAdapter):
@@ -127,7 +127,7 @@ class IEAAdapter(DataSourceAdapter):
             freshness_seconds=int(data.get("freshness_seconds", 0)),
             error_code=data.get("error_code"),
             source_status=source_status,
-            timestamp=data.get("timestamp") or datetime.utcnow(),
+            timestamp=data.get("timestamp") or datetime.now(timezone.utc),
         )
 
     def get_source_status(self) -> Tuple[str, float, Optional[str]]:
@@ -158,7 +158,7 @@ class IEAAdapter(DataSourceAdapter):
         if not api_key:
             raise ConfigError("IEA_API_KEY is required for IEAAdapter")
 
-        month_key = datetime.utcnow().strftime("%Y-%m")
+        month_key = datetime.now(timezone.utc).strftime("%Y-%m")
         if self._get_usage_count(month_key) >= IEA_MONTHLY_LIMIT:
             logger.warning(
                 "%s: monthly rate limit reached for IEA stats API", self.source_id
@@ -208,7 +208,7 @@ class IEAAdapter(DataSourceAdapter):
                         error_code=None,
                         consecutive_failures=0,
                     ).model_dump(mode="python"),
-                    "timestamp": datetime.utcnow(),
+                    "timestamp": datetime.now(timezone.utc),
                 }
                 self._consecutive_failures = 0
                 self._last_error_code = None
@@ -349,7 +349,7 @@ class IEAAdapter(DataSourceAdapter):
         memory_hit = self._memory_cache.get(country_iso)
         if memory_hit is not None:
             coverage, expires_at = memory_hit
-            if expires_at > datetime.utcnow():
+            if expires_at > datetime.now(timezone.utc):
                 return coverage
 
         try:
@@ -360,7 +360,7 @@ class IEAAdapter(DataSourceAdapter):
                 coverage = StockDaysCoverage.model_validate(cache.cached_data)
                 self._memory_cache[country_iso] = (
                     coverage,
-                    datetime.utcnow() + self._ttl_delta(),
+                    datetime.now(timezone.utc) + self._ttl_delta(),
                 )
                 return coverage
         except Exception as exc:  # pragma: no cover - cache should be best-effort
@@ -368,7 +368,7 @@ class IEAAdapter(DataSourceAdapter):
             return None
 
     def _set_cached_coverage(self, country_iso: str, coverage: StockDaysCoverage) -> None:
-        expires_at = datetime.utcnow() + self._ttl_delta()
+        expires_at = datetime.now(timezone.utc) + self._ttl_delta()
         self._memory_cache[country_iso] = (coverage, expires_at)
 
         try:
