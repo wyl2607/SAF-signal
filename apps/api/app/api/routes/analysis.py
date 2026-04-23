@@ -1,13 +1,19 @@
-from fastapi import APIRouter, HTTPException, Query
+from datetime import datetime
 
-from app.schemas.analysis import AirlineDecisionResponse, TippingPointResponse
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from app.db.session import get_db
+from app.schemas.analysis import AirlineDecisionResponse, TippingEventResponse, TippingPointResponse
 from app.services.analysis.dashboard_contracts import (
     build_airline_decision_response,
     build_tipping_point_response,
 )
 from app.services.analysis.pathway_costs import DEFAULT_ANALYSIS_PATHWAY_KEY, get_pathway_cost
+from app.services.analysis.tipping_point import TippingPointEngine
 
 router = APIRouter()
+engine = TippingPointEngine()
 
 
 @router.get("/tipping-point", response_model=TippingPointResponse)
@@ -43,3 +49,25 @@ def get_airline_decision_analysis(
         carbon_price_eur_per_t=carbon_price_eur_per_t,
         pathway_key=pathway_key,
     )
+
+
+@router.get("/tipping-point/events", response_model=list[TippingEventResponse])
+def list_tipping_point_events(
+    since: datetime | None = Query(default=None, description="Filter events observed at or after this ISO8601 timestamp"),
+    limit: int = Query(default=100, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> list[TippingEventResponse]:
+    events = engine.fetch_events(db, since=since, limit=limit)
+    return [
+        TippingEventResponse(
+            id=event.id,
+            event_type=event.event_type,
+            saf_pathway=event.saf_pathway,
+            fossil_price_usd_per_l=float(event.fossil_price),
+            saf_effective_cost_usd_per_l=float(event.saf_effective_price),
+            gap_usd_per_l=float(event.gap_usd_per_litre),
+            observed_at=event.timestamp,
+            metadata=dict(event.metadata_ or {}),
+        )
+        for event in events
+    ]
