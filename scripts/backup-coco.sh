@@ -1,13 +1,13 @@
 #!/bin/bash
-# coco 备份脚本 — 每日凌晨自动备份 safvsoil 完整代码
-# 用法: 手动执行或配置 cron: 0 3 * * * ~/safvsoil/scripts/backup-coco.sh
+# coco 备份脚本 — 每日凌晨自动备份 jetscope 完整代码
+# 用法: 手动执行或配置 cron: 0 3 * * * ~/jetscope/scripts/backup-coco.sh
 
 set -e
 
-SRC="$HOME/safvsoil/"
-BACKUP_DIR="$HOME/safvsoil-backups"
+SRC="$HOME/jetscope/"
+BACKUP_DIR="$HOME/jetscope-backups"
 DATE=$(date +%Y%m%d)
-BACKUP_FILE="$BACKUP_DIR/safvsoil-$DATE.tar.gz"
+BACKUP_FILE="$BACKUP_DIR/jetscope-$DATE.tar.gz"
 
 echo "=== coco Backup ==="
 echo "Source: $SRC"
@@ -27,14 +27,14 @@ tar -czf "$BACKUP_FILE" \
   --exclude='*.tar.gz' \
   --exclude='apps/web/tsconfig.tsbuildinfo' \
   --exclude='apps/web/next-env.d.ts' \
-  -C "$HOME" safvsoil/
+  -C "$HOME" jetscope/
 
 echo "✅ Backup complete: $BACKUP_FILE"
 
 # Keep only last 7 backups
 echo "Cleaning old backups (keep 7 days)..."
 cd "$BACKUP_DIR"
-ls -t safvsoil-*.tar.gz | tail -n +8 | xargs -r rm -f
+ls -t jetscope-*.tar.gz | tail -n +8 | xargs -r rm -f
 echo "✅ Cleanup complete"
 
 echo ""

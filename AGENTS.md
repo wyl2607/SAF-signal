@@ -1,8 +1,8 @@
-# AGENTS.md — SAFvSoil AI 入口指南
+# AGENTS.md — JetScope AI 入口指南
 
-> **项目**: SAFvSoil (SAF vs Oil)  
+> **项目**: JetScope (原 SAFvSoil / SAF vs Oil)  
 > **角色**: AI 并行开发系统入口  
-> **版本**: v1.1  
+> **版本**: v2.0  
 > **节点数**: 5 (本机 + mac-mini + coco + windows-pc + usa-vps)  
 
 ---
@@ -16,10 +16,10 @@
 source scripts/safenv
 
 # 2. 验证环境
-source scripts/safenv && ls "$SAFVSOIL_ROOT"
+source scripts/safenv && ls "$JETSCOPE_ROOT"
 
 # 3. 查看并行开发规范
-cat "$SAFVSOIL_ROOT/PARALLEL_DEVELOPMENT_GUIDE.md"
+cat "$JETSCOPE_ROOT/docs/PARALLEL_DEVELOPMENT_GUIDE.md"
 ```
 
 ---
@@ -28,11 +28,11 @@ cat "$SAFVSOIL_ROOT/PARALLEL_DEVELOPMENT_GUIDE.md"
 
 | 节点 | 路径 | 如何到达 | 用途 |
 |------|------|---------|------|
-| **本机** | `~/SAFvsOil` | 本地 | 主开发 + GitHub 发布 |
-| **mac-mini** | `~/safvsoil` | `ssh mac-mini` | 后端开发 + 测试 |
-| **coco** | `~/safvsoil` | `ssh coco` | 文档 + 部署 + 备份 |
-| **windows-pc** | `C:\Users\wyl26\safvsoil` | `ssh windows-pc` | Windows 兼容 |
-| **usa-vps** | `~/safvsoil` | `ssh usa-vps` | 远程部署验证 |
+| **本机** | `~/projects/jetscope` | 本地 | 主开发 + GitHub 发布 |
+| **mac-mini** | `~/jetscope` | `ssh mac-mini` | 后端开发 + 测试 |
+| **coco** | `~/jetscope` | `ssh coco` | 文档 + 部署 + 备份 |
+| **windows-pc** | `C:\Users\wyl26\jetscope` | `ssh windows-pc` | Windows 兼容 |
+| **usa-vps** | `~/jetscope` | `ssh usa-vps` | 远程部署验证 |
 | **GitHub** | `wyl2607/SAF-signal` | git push | 发布目标（零敏感信息） |
 
 ---
@@ -40,10 +40,10 @@ cat "$SAFVSOIL_ROOT/PARALLEL_DEVELOPMENT_GUIDE.md"
 ## 🔧 系统能力清单
 
 ### 1. 自发现系统 (`scripts/safenv`)
-- 自动定位 `SAFVSOIL_ROOT` 项目根目录
-- 导出子路径：`SAFVSOIL_WEB`, `SAFVSOIL_API`, `SAFVSOIL_SCRIPTS`
+- 自动定位 `JETSCOPE_ROOT` 项目根目录
+- 导出子路径：`JETSCOPE_WEB`, `JETSCOPE_API`, `JETSCOPE_SCRIPTS`
 - 支持 Unix/macOS (`safenv`) 和 Windows (`safenv.ps1`)
-- 通过 `.safvsoil-root` marker 文件或环境变量定位
+- 通过 `.jetscope-root` marker 文件或环境变量定位
 
 ### 2. 同步系统 (`scripts/sync-to-nodes.sh`, `scripts/sync-from-node.sh`)
 - **推送到所有节点**: `./scripts/sync-to-nodes.sh`
@@ -62,7 +62,7 @@ cat "$SAFVSOIL_ROOT/PARALLEL_DEVELOPMENT_GUIDE.md"
 - `npm test` — 单元测试
 
 ### 5. 备份系统 (`scripts/backup-coco.sh`)
-- coco 每日凌晨自动备份 `~/safvsoil/` → `~/safvsoil-backups/`
+- coco 每日凌晨自动备份 `~/jetscope/` → `~/jetscope-backups/`
 - 保留最近 7 天备份
 
 ### 6. Codex CLI 集成
@@ -120,10 +120,10 @@ done
 ### 同步失败
 ```bash
 # 检查 marker 文件
-ssh [node] "ls ~/safvsoil/.safvsoil-root 2>/dev/null || echo 'Missing marker'"
+ssh [node] "ls ~/jetscope/.jetscope-root 2>/dev/null || echo 'Missing marker'"
 
 # 手动修复
-ssh [node] "touch ~/safvsoil/.safvsoil-root"
+ssh [node] "touch ~/jetscope/.jetscope-root"
 ```
 
 ### 验证失败
@@ -141,8 +141,8 @@ npm run preflight
 | 文件 | 用途 |
 |------|------|
 | `AGENTS.md` | 本文件 — AI 入口指南 |
-| `PARALLEL_DEVELOPMENT_GUIDE.md` | 完整的并行开发规范 |
-| `SAF_DEVELOPMENT_ANALYSIS_REPORT.md` | 项目分析报告 |
+| `docs/PARALLEL_DEVELOPMENT_GUIDE.md` | 完整的并行开发规范 |
+| `docs/SAF_DEVELOPMENT_ANALYSIS_REPORT.md` | 项目分析报告 |
 | `scripts/safenv` | 自发现脚本 (Unix) |
 | `scripts/safenv.ps1` | 自发现脚本 (Windows) |
 | `scripts/sync-to-nodes.sh` | 推送到所有节点 |
@@ -153,4 +153,4 @@ npm run preflight
 
 ---
 
-**更新**: 本文件应随架构变化更新，更新位置：`$SAFVSOIL_ROOT/AGENTS.md`
+**更新**: 本文件应随架构变化更新，更新位置：`$JETSCOPE_ROOT/AGENTS.md`

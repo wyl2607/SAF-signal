@@ -1,7 +1,0 @@
-User-Agent: *
-Allow: /
-Disallow: /api/
-Disallow: /admin
-
-Host: https://saf.meichen.beauty
-Sitemap: https://saf.meichen.beauty/sitemap.xml

@@ -1,1 +1,0 @@
-globalThis.__RSC_MANIFEST=(globalThis.__RSC_MANIFEST||{});globalThis.__RSC_MANIFEST["/api/scenarios/route"]={"moduleLoading":{"prefix":"/_next/"},"ssrModuleMapping":{},"edgeSSRModuleMapping":{},"clientModules":{},"entryCSSFiles":{"/Users/yumei/projects/SAF-signal/apps/web/app/api/scenarios/route":[]},"rscModuleMapping":{},"edgeRscModuleMapping":{}};
