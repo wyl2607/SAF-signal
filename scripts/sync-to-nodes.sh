@@ -1,69 +1,57 @@
 #!/bin/bash
-# SAF 并行开发 — 从本机同步到所有节点
-# 节点: mac-mini | coco | windows-pc | usa-vps
-# 用法: ./scripts/sync-to-nodes.sh
 
-set -e
+set -euo pipefail
 
-SRC="/Users/yumei/SAFvsOil/"
+SRC="/Users/yumei/projects/jetscope/"
+BUS_WRITE="/Users/yumei/tools/script-core/bin/sc-bus-write"
+PRODUCER="jetscope/scripts/sync-to-nodes.sh"
 
-echo "=== SAF Cluster Sync (5 Nodes) ==="
-echo "Source: $SRC"
-echo "Nodes:  mac-mini | coco | windows-pc | usa-vps"
-echo ""
+emit_sync() {
+  local node="$1"
+  local status="$2"
+  local direction="$3"
+  local transport="$4"
+  local duration_ms="$5"
+  local error_text="${6:-}"
+  local payload
+  payload=$(cat <<EOF
+{"project":"jetscope","node":"$node","status":"$status","direction":"$direction","transport":"$transport","duration_ms":$duration_ms,"error":"$error_text"}
+EOF
+)
+  "$BUS_WRITE" node-sync-event --key "${node}-${direction}" --producer "$PRODUCER" --payload "$payload" >/dev/null || true
+}
 
-RSYNC_OPTS="-avz --delete \
-  --exclude='.git' \
-  --exclude='node_modules' \
-  --exclude='apps/web/.next' \
-  --exclude='apps/web/dist' \
-  --exclude='apps/api/.venv' \
-  --exclude='.omx' \
-  --exclude='.automation' \
-  --exclude='test-results' \
-  --exclude='*.tar.gz' \
-  --exclude='apps/web/tsconfig.tsbuildinfo' \
-  --exclude='apps/web/next-env.d.ts'"
+RSYNC_OPTS="-avz --delete --exclude=.git --exclude=node_modules --exclude=apps/web/.next --exclude=apps/web/dist --exclude=apps/api/.venv --exclude=.omx --exclude=.automation --exclude=test-results --exclude=*.tar.gz --exclude=apps/web/tsconfig.tsbuildinfo --exclude=apps/web/next-env.d.ts"
 
-# Unix 节点 (rsync)
 UNIX_NODES=("mac-mini" "coco" "usa-vps")
 for node in "${UNIX_NODES[@]}"; do
-  echo "[$node] Syncing via rsync..."
-  if rsync $RSYNC_OPTS "$SRC" "$node:~/safvsoil/"; then
-    echo "[$node] ✅ Sync complete"
+  start=$(date +%s)
+  emit_sync "$node" "started" "push" "rsync" 0 ""
+  if rsync $RSYNC_OPTS "$SRC" "$node:~/jetscope/"; then
+    end=$(date +%s)
+    emit_sync "$node" "success" "push" "rsync" $(((end-start)*1000)) ""
   else
-    echo "[$node] ❌ Sync failed"
+    end=$(date +%s)
+    emit_sync "$node" "failed" "push" "rsync" $(((end-start)*1000)) "rsync failed"
     exit 1
   fi
-  echo ""
 done
 
-# Windows 节点 (tar + scp)
-echo "[windows-pc] Syncing via tar+scp..."
-TAR_FILE="/tmp/safvsoil-windows.tar.gz"
+start=$(date +%s)
+emit_sync "windows-pc" "started" "push" "tar+scp" 0 ""
+TAR_FILE="/tmp/jetscope-windows.tar.gz"
 cd "$SRC"
-tar -czf "$TAR_FILE" \
-  --exclude='.git' \
-  --exclude='node_modules' \
-  --exclude='apps/web/.next' \
-  --exclude='apps/web/dist' \
-  --exclude='apps/api/.venv' \
-  --exclude='.omx' \
-  --exclude='.automation' \
-  --exclude='test-results' \
-  --exclude='*.tar.gz' \
-  --exclude='apps/web/tsconfig.tsbuildinfo' \
-  --exclude='apps/web/next-env.d.ts' \
-  .
-
-if scp "$TAR_FILE" windows-pc:C:/Users/wyl26/safvsoil/; then
-  ssh windows-pc "cd C:\Users\wyl26\safvsoil; tar -xzf safvsoil-windows.tar.gz; Remove-Item safvsoil-windows.tar.gz"
-  echo "[windows-pc] ✅ Sync complete"
+tar -czf "$TAR_FILE" --exclude='.git' --exclude='node_modules' --exclude='apps/web/.next' --exclude='apps/web/dist' --exclude='apps/api/.venv' --exclude='.omx' --exclude='.automation' --exclude='test-results' --exclude='*.tar.gz' --exclude='apps/web/tsconfig.tsbuildinfo' --exclude='apps/web/next-env.d.ts' .
+if scp "$TAR_FILE" windows-pc:C:/Users/wyl26/jetscope/; then
+  ssh windows-pc "cd C:\Users\wyl26\jetscope; tar -xzf jetscope-windows.tar.gz; Remove-Item jetscope-windows.tar.gz"
+  rm -f "$TAR_FILE"
+  end=$(date +%s)
+  emit_sync "windows-pc" "success" "push" "tar+scp" $(((end-start)*1000)) ""
 else
-  echo "[windows-pc] ❌ Sync failed"
+  rm -f "$TAR_FILE"
+  end=$(date +%s)
+  emit_sync "windows-pc" "failed" "push" "tar+scp" $(((end-start)*1000)) "scp failed"
   exit 1
 fi
-rm -f "$TAR_FILE"
 
-echo ""
-echo "=== All 4 nodes synced ==="
+echo "All nodes synced"

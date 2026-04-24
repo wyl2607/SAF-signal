@@ -6,6 +6,8 @@ const nav = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/crisis/eu-jet-reserves', label: 'Crisis' },
   { href: '/scenarios', label: 'Scenarios' },
+  { href: '/research', label: 'Research' },
+  { href: '/reports', label: 'Reports' },
   { href: '/sources', label: 'Sources' },
   { href: '/admin', label: 'Admin' }
 ] as const;
@@ -26,7 +28,7 @@ export function Shell({
       <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-sky-300">SAFvsOil Product Scaffold</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-sky-300">JetScope</p>
             <h1 className="mt-1 text-xl font-semibold text-white">{title}</h1>
           </div>
           <nav className="flex flex-wrap gap-4 text-sm text-slate-300">

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Index, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -77,3 +77,82 @@ class RefuelEuTarget(Base):
     saf_share_pct: Mapped[float] = mapped_column(Float)
     synthetic_share_pct: Mapped[float] = mapped_column(Float)
     label: Mapped[str] = mapped_column(String(120))
+
+
+class ReservesCoverage(Base):
+    __tablename__ = "reserves_coverage"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    country_iso: Mapped[str] = mapped_column(String(8), index=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    stock_days: Mapped[float] = mapped_column(Float)
+    source: Mapped[str] = mapped_column(String(80))
+    confidence: Mapped[float] = mapped_column(Float)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_reserves_coverage_country_iso_timestamp", "country_iso", timestamp.desc()),
+    )
+
+
+class TippingEvent(Base):
+    __tablename__ = "tipping_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    event_type: Mapped[str] = mapped_column(
+        Enum("ALERT", "CRITICAL", "CROSSOVER", name="tipping_event_type", native_enum=False, create_constraint=True),
+    )
+    gap_usd_per_litre: Mapped[float] = mapped_column(Float)
+    fossil_price: Mapped[float] = mapped_column(Float)
+    saf_effective_price: Mapped[float] = mapped_column(Float)
+    saf_pathway: Mapped[str] = mapped_column(String(120))
+    triggered_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON)  # mapped as DB column `metadata`
+
+    __table_args__ = (
+        Index("ix_tipping_events_event_type_timestamp", "event_type", timestamp.desc()),
+    )
+
+
+class ESGSignal(Base):
+    __tablename__ = "esg_signals"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    source_url: Mapped[str] = mapped_column(String(1024), unique=True, index=True)
+    signal_type: Mapped[str] = mapped_column(
+        Enum(
+            "SUPPLY_DISRUPTION",
+            "POLICY_CHANGE",
+            "PRICE_SHOCK",
+            "CAPACITY_ANNOUNCEMENT",
+            "OTHER",
+            name="esg_signal_type",
+            native_enum=False,
+            create_constraint=True,
+        )
+    )
+    entities: Mapped[list[str]] = mapped_column(JSON)
+    impact_direction: Mapped[str] = mapped_column(
+        Enum(
+            "BEARISH_SAF",
+            "BULLISH_SAF",
+            "NEUTRAL",
+            name="esg_impact_direction",
+            native_enum=False,
+            create_constraint=True,
+        )
+    )
+    confidence: Mapped[float] = mapped_column(Float)
+    summary_en: Mapped[str] = mapped_column(Text)
+    summary_cn: Mapped[str] = mapped_column(Text)
+    raw_title: Mapped[str] = mapped_column(String(512))
+    raw_excerpt: Mapped[str] = mapped_column(Text)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    claude_model: Mapped[str] = mapped_column(String(120))
+    prompt_cache_hit: Mapped[bool] = mapped_column(Boolean)
+
+    __table_args__ = (
+        Index("ix_esg_signals_signal_type_created_at", "signal_type", created_at.desc()),
+    )
