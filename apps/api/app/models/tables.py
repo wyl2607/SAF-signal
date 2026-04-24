@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Index, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Index, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -163,6 +163,6 @@ class AIResearchBudgetDay(Base):
     __tablename__ = "ai_research_budget_days"
 
     day: Mapped[str] = mapped_column(String(10), primary_key=True)
-    tokens_used: Mapped[int] = mapped_column(default=0)
+    tokens_used: Mapped[int] = mapped_column(Integer, default=0)
     exhausted: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
