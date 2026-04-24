@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
@@ -24,12 +24,16 @@ SignalTypeParam = Literal[
 
 @router.get("/signals", response_model=list[ResearchSignalResponse])
 def list_research_signals(
-    since: datetime = Query(..., description="Filter records created at or after this ISO8601 timestamp"),
+    since: datetime | None = Query(
+        default=None,
+        description="Filter records created at or after this ISO8601 timestamp. Defaults to the last 30 days.",
+    ),
     limit: int = Query(default=50, ge=1, le=200),
     signal_type: SignalTypeParam | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[ResearchSignalResponse]:
-    rows = repository.list_recent(db=db, since=since, limit=limit, signal_type=signal_type)
+    effective_since = since or (datetime.now(timezone.utc) - timedelta(days=30))
+    rows = repository.list_recent(db=db, since=effective_since, limit=limit, signal_type=signal_type)
     return [
         ResearchSignalResponse(
             id=row.id,

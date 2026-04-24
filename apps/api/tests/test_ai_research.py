@@ -300,3 +300,34 @@ def test_research_route_filters_since_limit_signal_type(client: TestClient, sess
     assert len(payload) == 1
     assert payload[0]["source_url"] == "https://example.com/new1"
     assert payload[0]["signal_type"] == "POLICY_CHANGE"
+
+
+def test_research_route_defaults_to_recent_window(client: TestClient, session_factory):
+    now = datetime.now(timezone.utc)
+    with session_factory() as db:
+        db.add(
+            ESGSignal(
+                id=str(uuid4()),
+                created_at=now - timedelta(hours=1),
+                source_url="https://example.com/default-window",
+                signal_type="OTHER",
+                entities=[],
+                impact_direction="NEUTRAL",
+                confidence=0.6,
+                summary_en="recent",
+                summary_cn="recent",
+                raw_title="recent",
+                raw_excerpt="recent",
+                published_at=now - timedelta(hours=1),
+                claude_model="mock",
+                prompt_cache_hit=False,
+            )
+        )
+        db.commit()
+
+    response = client.get("/v1/research/signals")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["source_url"] == "https://example.com/default-window"
