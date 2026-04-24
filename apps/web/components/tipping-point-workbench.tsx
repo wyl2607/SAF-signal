@@ -38,6 +38,12 @@ function finiteNumber(value: string | null, fallback: number): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
+function boundedNumber(value: string, fallback: number, min: number, max = Number.POSITIVE_INFINITY): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
 function formatNumber(value: number, digits = 2): string {
   return value.toFixed(digits);
 }
@@ -265,7 +271,7 @@ export function TippingPointWorkbench({
               min="0.1"
               step="0.01"
               value={fossilJetUsdPerL}
-              onChange={(event) => setFossilJetUsdPerL(Number(event.target.value))}
+              onChange={(event) => setFossilJetUsdPerL((current) => boundedNumber(event.target.value, current, 0.1))}
             />
           </label>
           <label className="text-xs uppercase tracking-[0.14em] text-slate-400">
@@ -276,7 +282,7 @@ export function TippingPointWorkbench({
               min="0"
               step="1"
               value={carbonPriceEurPerT}
-              onChange={(event) => setCarbonPriceEurPerT(Number(event.target.value))}
+              onChange={(event) => setCarbonPriceEurPerT((current) => boundedNumber(event.target.value, current, 0))}
             />
           </label>
           <label className="text-xs uppercase tracking-[0.14em] text-slate-400">
@@ -287,7 +293,7 @@ export function TippingPointWorkbench({
               min="0"
               step="0.01"
               value={subsidyUsdPerL}
-              onChange={(event) => setSubsidyUsdPerL(Number(event.target.value))}
+              onChange={(event) => setSubsidyUsdPerL((current) => boundedNumber(event.target.value, current, 0))}
             />
           </label>
           <label className="text-xs uppercase tracking-[0.14em] text-slate-400">
@@ -299,7 +305,7 @@ export function TippingPointWorkbench({
               max="100"
               step="1"
               value={blendRatePct}
-              onChange={(event) => setBlendRatePct(Math.min(100, Number(event.target.value)))}
+              onChange={(event) => setBlendRatePct((current) => boundedNumber(event.target.value, current, 0, 100))}
             />
           </label>
           <label className="text-xs uppercase tracking-[0.14em] text-slate-400">
@@ -310,7 +316,7 @@ export function TippingPointWorkbench({
               min="0.1"
               step="0.1"
               value={reserveWeeks}
-              onChange={(event) => setReserveWeeks(Number(event.target.value))}
+              onChange={(event) => setReserveWeeks((current) => boundedNumber(event.target.value, current, 0.1))}
             />
           </label>
           <label className="text-xs uppercase tracking-[0.14em] text-slate-400">

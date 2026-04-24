@@ -41,6 +41,14 @@ function parseJsonArray(raw: string, field: string): unknown[] {
   return parsed;
 }
 
+function finiteDraftNumber(value: string, field: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${field} must be a finite number`);
+  }
+  return parsed;
+}
+
 export function AdminDataOps() {
   const [pathwaysJson, setPathwaysJson] = useState(PATHWAYS_PLACEHOLDER);
   const [policiesJson, setPoliciesJson] = useState(POLICIES_PLACEHOLDER);
@@ -173,8 +181,8 @@ export function AdminDataOps() {
         pathway_id: draftPathwayId.trim(),
         name: draftPathwayName.trim(),
         pathway: draftPathwayName.trim(),
-        base_cost_usd_per_l: Number(draftPathwayCost),
-        co2_savings_kg_per_l: Number(draftPathwaySavings),
+        base_cost_usd_per_l: finiteDraftNumber(draftPathwayCost, 'base_cost_usd_per_l'),
+        co2_savings_kg_per_l: finiteDraftNumber(draftPathwaySavings, 'co2_savings_kg_per_l'),
         category: 'saf'
       });
       validatePathwaysPayload(JSON.stringify(list));
@@ -190,9 +198,9 @@ export function AdminDataOps() {
     try {
       const list = parseJsonArray(policiesJson, 'policies');
       list.push({
-        year: Number(draftPolicyYear),
-        saf_share_pct: Number(draftPolicySaf),
-        synthetic_share_pct: Number(draftPolicySynthetic),
+        year: finiteDraftNumber(draftPolicyYear, 'year'),
+        saf_share_pct: finiteDraftNumber(draftPolicySaf, 'saf_share_pct'),
+        synthetic_share_pct: finiteDraftNumber(draftPolicySynthetic, 'synthetic_share_pct'),
         label: draftPolicyLabel.trim()
       });
       validatePoliciesPayload(JSON.stringify(list));
