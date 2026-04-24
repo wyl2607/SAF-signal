@@ -8,6 +8,16 @@ from sqlalchemy.orm import Session
 from app.models.sqlite_models import PriceCache
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 class PriceCacheService:
     """Service for managing 24-hour price cache."""
 
@@ -20,7 +30,7 @@ class PriceCacheService:
             PriceCache.market_type == market_type
         ).first()
 
-        if cache and cache.expires_at > datetime.now(timezone.utc):
+        if cache and _as_utc(cache.expires_at) > _utcnow():
             return cache
         return None
 
@@ -32,7 +42,7 @@ class PriceCacheService:
         ttl_hours: int = CACHE_TTL_HOURS,
     ) -> PriceCache:
         """Set or update cache for market type."""
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
+        expires_at = _utcnow() + timedelta(hours=ttl_hours)
 
         cache = db.query(PriceCache).filter(
             PriceCache.market_type == market_type
@@ -40,7 +50,7 @@ class PriceCacheService:
 
         if cache:
             cache.cached_data = cached_data
-            cache.last_updated = datetime.now(timezone.utc)
+            cache.last_updated = _utcnow()
             cache.expires_at = expires_at
         else:
             cache = PriceCache(
@@ -68,7 +78,7 @@ class PriceCacheService:
     @staticmethod
     def cleanup_expired(db: Session) -> int:
         """Remove expired cache entries."""
-        now = datetime.now(timezone.utc)
+        now = _utcnow()
         count = db.query(PriceCache).filter(PriceCache.expires_at < now).delete()
         db.commit()
         return count
