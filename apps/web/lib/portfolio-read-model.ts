@@ -50,12 +50,18 @@ export type ResearchSignalsResult =
     };
 
 export const AI_RESEARCH_ENABLED =
-  String(process.env.AI_RESEARCH_ENABLED ?? '').toLowerCase() === 'true';
+  String(process.env.JETSCOPE_AI_RESEARCH_ENABLED ?? process.env.AI_RESEARCH_ENABLED ?? '').toLowerCase() === 'true';
 
 function normalizeImpactDirection(value: unknown): ResearchSignal['impact_direction'] {
   const normalized = String(value ?? '').trim().toLowerCase();
   if (normalized === 'positive' || normalized === 'negative' || normalized === 'neutral') {
     return normalized;
+  }
+  if (normalized === 'bullish_saf' || normalized === 'bullish') {
+    return 'positive';
+  }
+  if (normalized === 'bearish_saf' || normalized === 'bearish') {
+    return 'negative';
   }
   return 'unknown';
 }
@@ -70,7 +76,7 @@ function clampConfidence(value: unknown): number {
 
 function normalizeSignal(raw: Record<string, unknown>, index: number): ResearchSignal {
   const signalType = String(raw.signal_type ?? raw.type ?? 'uncategorized');
-  const title = String(raw.title ?? raw.headline ?? `${signalType} signal ${index + 1}`);
+  const title = String(raw.title ?? raw.raw_title ?? raw.headline ?? `${signalType} signal ${index + 1}`);
 
   return {
     id: String(raw.id ?? raw.signal_id ?? `${signalType}-${index}`),
@@ -140,7 +146,11 @@ export async function getResearchSignals(): Promise<ResearchSignalsResult> {
   }
 
   try {
-    const response = await fetchJsonWithStatus<unknown>('/research/signals');
+    const search = new URLSearchParams({
+      since: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      limit: '20'
+    });
+    const response = await fetchJsonWithStatus<unknown>(`/research/signals?${search.toString()}`);
     if (response.status === 404) {
       return {
         status: 'not_found',

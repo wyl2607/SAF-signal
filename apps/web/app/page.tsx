@@ -54,6 +54,12 @@ const CTA_CARDS = [
     description: 'Pathway comparison and simulator showing when SAF becomes rational.',
     href: '/crisis/saf-tipping-point' as Route,
     tone: 'border-emerald-600/40 bg-emerald-500/10'
+  },
+  {
+    title: 'Report',
+    description: 'A structured thesis shell for recruiters and reviewers.',
+    href: '/reports/tipping-point-analysis' as Route,
+    tone: 'border-indigo-600/40 bg-indigo-500/10'
   }
 ];
 
@@ -83,7 +89,7 @@ export default async function HomePage() {
         </p>
       </section>
 
-      <section className="mt-8 grid gap-4 md:grid-cols-3">
+      <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
           <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Core Figure 1 · Reserves</p>
           <h3 className="mt-2 text-lg font-semibold text-white">/v1/reserves/eu</h3>
