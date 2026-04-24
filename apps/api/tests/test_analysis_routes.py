@@ -1,4 +1,6 @@
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI
@@ -9,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from app.api.router import api_router
 from app.db.base import Base
 from app.db.session import get_db
+from app.models.tables import ReservesCoverage, TippingEvent
 from app.schemas.sources import SourceCoverageMetric, SourceCoverageResponse
 
 
@@ -100,6 +103,93 @@ def test_reserve_and_source_routes_return_contract_shapes(client: TestClient):
     assert isinstance(source_payload["completeness"], (int, float))
     assert "degraded" in source_payload
     assert isinstance(source_payload["degraded"], bool)
+
+
+def test_reserve_route_uses_seeded_reserves_coverage(client: TestClient, db_path: Path):
+    engine = create_engine(f"sqlite:///{db_path}", future=True)
+    SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+    now = datetime.now(timezone.utc)
+    with SessionLocal() as session:
+        session.add_all(
+            [
+                ReservesCoverage(
+                    id=str(uuid4()),
+                    country_iso="DE",
+                    timestamp=now,
+                    stock_days=21.0,
+                    source="iea_oil_market_report",
+                    confidence=0.9,
+                    fetched_at=now,
+                ),
+                ReservesCoverage(
+                    id=str(uuid4()),
+                    country_iso="FR",
+                    timestamp=now,
+                    stock_days=28.0,
+                    source="iea_oil_market_report",
+                    confidence=0.8,
+                    fetched_at=now,
+                ),
+            ]
+        )
+        session.commit()
+
+    response = client.get("/v1/reserves/eu")
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert payload["coverage_days"] == 24
+    assert payload["coverage_weeks"] == pytest.approx(round(24 / 7, 2))
+    assert payload["source_type"] == "official"
+    assert payload["source_name"] == "IEA Oil Market Report"
+    assert payload["confidence_score"] == pytest.approx(0.85)
+
+
+def test_tipping_point_events_route_filters_and_serializes_metadata(client: TestClient, db_path: Path):
+    engine = create_engine(f"sqlite:///{db_path}", future=True)
+    SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+    base = datetime(2026, 4, 23, 12, 0, tzinfo=timezone.utc)
+    with SessionLocal() as session:
+        session.add_all(
+            [
+                TippingEvent(
+                    id=str(uuid4()),
+                    timestamp=base - timedelta(hours=4),
+                    event_type="ALERT",
+                    gap_usd_per_litre=-0.11,
+                    fossil_price=1.14,
+                    saf_effective_price=1.25,
+                    saf_pathway="hefa",
+                    triggered_by="test",
+                    metadata_={"ignored": True},
+                ),
+                TippingEvent(
+                    id=str(uuid4()),
+                    timestamp=base - timedelta(hours=1),
+                    event_type="CROSSOVER",
+                    gap_usd_per_litre=0.03,
+                    fossil_price=1.28,
+                    saf_effective_price=1.25,
+                    saf_pathway="hefa",
+                    triggered_by="test",
+                    metadata_={"breakeven_oil_price_usd_per_bbl": 137.5},
+                ),
+            ]
+        )
+        session.commit()
+
+    response = client.get(
+        "/v1/analysis/tipping-point/events",
+        params={"since": (base - timedelta(hours=2)).isoformat(), "limit": 1},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert len(payload) == 1
+    assert payload[0]["event_type"] == "CROSSOVER"
+    assert payload[0]["saf_pathway"] == "hefa"
+    assert payload[0]["gap_usd_per_l"] == pytest.approx(0.03)
+    assert payload[0]["metadata"]["breakeven_oil_price_usd_per_bbl"] == 137.5
 
 
 def test_source_coverage_route_marks_partial_coverage_as_degraded(client: TestClient, monkeypatch: pytest.MonkeyPatch):
