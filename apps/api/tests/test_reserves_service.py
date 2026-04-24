@@ -11,6 +11,8 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
 from app.models.tables import ReservesCoverage
+from app.services.analysis.dashboard_contracts import build_eu_reserve_signal_response
+from app.services.analysis.reserve_stress import get_eu_reserve_stress
 from app.services.reserves import (
     EU_COUNTRIES,
     get_eu_reserve_stress_from_db,
@@ -30,7 +32,14 @@ def db_session(tmp_path):
         session.close()
 
 
-def _insert_row(session, iso: str, stock_days: float, at: datetime, confidence: float = 0.9, source: str = "iea_oil_market_report"):
+def _insert_row(
+    session,
+    iso: str,
+    stock_days: float,
+    at: datetime,
+    confidence: float = 0.9,
+    source: str = "iea_oil_market_report",
+):
     session.add(
         ReservesCoverage(
             id=str(uuid4()),
@@ -75,6 +84,28 @@ def test_reserve_stress_critical_when_below_14_days(db_session):
     assert resp is not None
     assert resp.stress_level == "critical"
     assert resp.supply_gap_pct == 100.0
+
+
+def test_reserve_stress_falls_back_without_db_rows(db_session):
+    resp = get_eu_reserve_stress(db_session)
+
+    assert resp.region == "eu"
+    assert resp.coverage_days == 20
+    assert resp.source_type == "manual"
+
+
+def test_reserve_signal_response_uses_db_backed_official_source(db_session):
+    now = datetime.now(timezone.utc)
+    _insert_row(db_session, "DE", 21.0, now)
+    _insert_row(db_session, "FR", 28.0, now)
+
+    resp = build_eu_reserve_signal_response(db=db_session)
+
+    assert resp.region == "eu"
+    assert resp.coverage_days == 24
+    assert resp.coverage_weeks == round(24 / 7, 2)
+    assert resp.source_type == "official"
+    assert resp.source_name == "IEA Oil Market Report"
 
 
 def test_refresh_without_api_key_returns_zero(db_session, monkeypatch):

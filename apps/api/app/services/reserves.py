@@ -85,7 +85,7 @@ def refresh_reserves_coverage(db: Session, adapter=None) -> int:
     adapter is unconfigured (no API key), so the refresh loop can keep running.
     """
     # Import locally to keep module import cheap when IEA isn't configured.
-    from apps.api.adapters.iea import ConfigError, IEAAdapter
+    from adapters.iea import ConfigError, IEAAdapter
 
     if adapter is None:
         try:
