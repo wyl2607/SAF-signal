@@ -1,5 +1,8 @@
 from app.schemas.analysis import PathwayCostBand
 
+EUR_TO_USD = 1.08
+FOSSIL_JET_EMISSIONS_KG_PER_L = 2.5
+
 
 PATHWAY_COSTS: dict[str, PathwayCostBand] = {
     "hefa": PathwayCostBand(
@@ -62,3 +65,22 @@ def get_pathway_cost(pathway_key: str) -> PathwayCostBand:
     if normalized_key not in PATHWAY_COSTS:
         raise KeyError(pathway_key)
     return PATHWAY_COSTS[normalized_key]
+
+
+def carbon_credit_usd_per_l(carbon_price_eur_per_t: float, carbon_reduction_pct: float) -> float:
+    carbon_price_usd_per_t = carbon_price_eur_per_t * EUR_TO_USD
+    avoided_tons_per_l = (FOSSIL_JET_EMISSIONS_KG_PER_L / 1000.0) * (carbon_reduction_pct / 100.0)
+    return carbon_price_usd_per_t * avoided_tons_per_l
+
+
+def effective_saf_cost(
+    pathway_key: str,
+    *,
+    carbon_price_eur_per_t: float = 0.0,
+    subsidy_usd_per_l: float = 0.0,
+    blend_rate_pct: float = 100.0,
+) -> float:
+    pathway = get_pathway_cost(pathway_key)
+    carbon_credit = carbon_credit_usd_per_l(carbon_price_eur_per_t, pathway.carbon_reduction_pct)
+    effective_support = (subsidy_usd_per_l + carbon_credit) * (blend_rate_pct / 100.0)
+    return pathway.midpoint_usd_per_l - effective_support

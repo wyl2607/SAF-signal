@@ -137,8 +137,18 @@ def build_airline_decision_response(
     )
 
 
-def build_eu_reserve_signal_response() -> ReserveSignalResponse:
-    reserve_stress = get_eu_reserve_stress()
+def _reserve_source_name(source_type: str) -> str:
+    if source_type == "manual":
+        return "IATA / EUROCONTROL curated estimate"
+    if source_type == "official":
+        return "IEA Oil Market Report"
+    if source_type == "derived":
+        return "Derived reserve coverage model"
+    return source_type
+
+
+def build_eu_reserve_signal_response(db=None) -> ReserveSignalResponse:
+    reserve_stress = get_eu_reserve_stress(db=db)
     return ReserveSignalResponse(
         generated_at=utcnow(),
         region=reserve_stress.region,
@@ -147,6 +157,6 @@ def build_eu_reserve_signal_response() -> ReserveSignalResponse:
         stress_level=reserve_stress.stress_level,
         estimated_supply_gap_pct=reserve_stress.supply_gap_pct,
         source_type=reserve_stress.source_type,
-        source_name="IATA / EUROCONTROL curated estimate" if reserve_stress.source_type == "manual" else reserve_stress.source_type,
+        source_name=_reserve_source_name(reserve_stress.source_type),
         confidence_score=reserve_stress.confidence,
     )

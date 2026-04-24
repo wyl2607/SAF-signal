@@ -1,9 +1,13 @@
 """Pydantic schemas for SQLite models."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class MarketPriceBase(BaseModel):
@@ -16,7 +20,7 @@ class MarketPriceBase(BaseModel):
 
 class MarketPriceCreate(MarketPriceBase):
     """Schema for creating market price."""
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=_utcnow)
 
 
 class MarketPriceUpdate(BaseModel):
@@ -31,8 +35,7 @@ class MarketPriceRead(MarketPriceBase):
     timestamp: datetime
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserScenarioBase(BaseModel):
@@ -61,8 +64,7 @@ class UserScenarioRead(UserScenarioBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MarketAlertBase(BaseModel):
@@ -92,8 +94,7 @@ class MarketAlertRead(MarketAlertBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PriceCacheRead(BaseModel):
@@ -103,5 +104,4 @@ class PriceCacheRead(BaseModel):
     last_updated: datetime
     expires_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
