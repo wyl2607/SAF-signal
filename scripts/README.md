@@ -16,6 +16,7 @@ This directory contains JetScope project automation scripts.
 - `preflight-ui-e2e.mjs`: UI end-to-end verification
 - `preflight-load-test.mjs`: load verification
 - `preflight-load-test-v1.mjs`: v1 API load verification
+- `automation-plan-check.mjs`: local validation for bounded parallel-development task specs
 
 ## Data Bus Integration
 
