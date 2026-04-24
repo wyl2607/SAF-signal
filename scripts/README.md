@@ -17,6 +17,7 @@ This directory contains JetScope project automation scripts.
 - `preflight-load-test.mjs`: load verification
 - `preflight-load-test-v1.mjs`: v1 API load verification
 - `automation-plan-check.mjs`: local validation for bounded parallel-development task specs
+- `automation-scope-check.mjs`: compare changed files with an automation task spec's allowed and forbidden paths
 
 ## Data Bus Integration
 

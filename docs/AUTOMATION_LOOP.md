@@ -164,12 +164,8 @@ Stop immediately when any of these are true:
 
 High-value follow-up tasks, in priority order:
 
-1. Add `/v1/readiness` as a real operational readiness endpoint while keeping `/v1/health` as liveness.
-2. Configure Dependabot grouping and define which dependency PRs can be auto-merged after CI.
-3. Add repository PR/security templates and automation labels.
-4. Add CodeQL report-only scanning.
-5. Harden tipping-point workbench numeric input boundaries.
-6. Clean remaining public-facing `SAF vs Oil` wording while keeping documented legacy compatibility fallbacks.
+1. Add repository PR/security labels.
+2. Add automation scope validation to CI once task specs are attached to automation PRs.
 
 ## Verification Commands
 

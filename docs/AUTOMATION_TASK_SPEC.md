@@ -104,6 +104,17 @@ Automation-created PRs must include:
 - Dependabot and low-risk maintenance may use auto-merge only when explicitly allowlisted.
 - Do not force push, amend, or bypass checks unless explicitly approved.
 
+## Scope Check
+
+Use the task spec to verify PR scope before merge:
+
+```bash
+npm run automation:plan:check -- docs/automation-task.example.json
+npm run automation:scope:check -- docs/automation-task.example.json origin/main
+```
+
+The scope check compares `git diff --name-only <base>...HEAD` with each task's `allowed_paths` and `forbidden_paths`. A changed file must match `allowed_paths` and must not match `forbidden_paths`.
+
 ## Forbidden By Default
 
 - Reading, printing, or writing secrets.
