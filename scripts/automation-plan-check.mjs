@@ -97,7 +97,7 @@ function main() {
     console.error(`Failed to parse ${planPath} as JSON: ${error instanceof Error ? error.message : error}`);
     process.exit(1);
   }
-  const tasks = Array.isArray(parsed) ? parsed : parsed.tasks;
+  const tasks = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.tasks) ? parsed.tasks : [parsed]);
   if (!Array.isArray(tasks) || tasks.length === 0) {
     fail('Task plan must be a non-empty array or an object with a non-empty tasks array');
   }
