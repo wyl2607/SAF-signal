@@ -33,6 +33,7 @@ Development worker sync is now opt-in. It is not part of the default production 
 - `usa-vps:~/jetscope` is a non-production workdir and must be synced only with explicit intent.
 - `usa-vps:/opt/jetscope` remains the production source path and is updated only through commit-pinned deploy.
 - `scripts/sync-excludes.sh` is the shared exclude source for push/pull sync. Update it alongside `.gitignore` when local-only or sensitive paths change.
+- Unix worker sync performs blocked-path readback after rsync; historical excluded remnants cause sync failure and require separate cleanup.
 - Windows opt-in sync now checks a small blocked-path set after extraction, but it still does not delete every possible historical excluded remnant.
 - Push or release work must obey `/Users/yumei/.codex/memories/UNIVERSAL_AI_DEV_POLICY.md`.
 - `scripts/release.sh` fails closed before publishing if required push gates `scripts/security_check.sh` and `scripts/review_push_guard.sh` are missing or not executable.
@@ -73,5 +74,5 @@ Use these only when there is a concrete reason:
 
 ## Known Gaps
 
-- Local backend pytest execution is still not fully restored in this environment.
+- Local backend pytest is restored through `npm run api:test`, which uses `apps/api/.venv/bin/python -m pytest tests`.
 - `scripts/rollback.sh` is older and more destructive than the preferred release path; do not make it the default recovery flow without explicit user approval.

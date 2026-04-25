@@ -3,7 +3,37 @@
 set -euo pipefail
 
 NODE="${1:-}"
-[[ -n "$NODE" ]] || { echo "Usage: $0 [mac-mini|coco|windows-pc|usa-vps]"; exit 1; }
+ALLOW_VPS=0
+
+usage() {
+  echo "Usage: $0 [mac-mini|coco|windows-pc|usa-vps] [--allow-vps-workdir]"
+}
+
+[[ -n "$NODE" ]] || { usage; exit 1; }
+if [ "$NODE" = "--help" ] || [ "$NODE" = "-h" ]; then
+  usage
+  exit 0
+fi
+shift || true
+
+while (($# > 0)); do
+  case "$1" in
+    --allow-vps-workdir)
+      ALLOW_VPS=1
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+  shift
+done
+
 case "$NODE" in
   mac-mini|coco|windows-pc|usa-vps)
     ;;
@@ -13,6 +43,12 @@ case "$NODE" in
     exit 2
     ;;
 esac
+
+if [ "$NODE" = "usa-vps" ] && [ "$ALLOW_VPS" -ne 1 ]; then
+  echo "Refusing to pull from usa-vps:~/jetscope without --allow-vps-workdir." >&2
+  echo "That path is a non-production workdir and may be stale; production deploy uses usa-vps:/opt/jetscope." >&2
+  exit 2
+fi
 
 DEST="/Users/yumei/projects/jetscope/"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

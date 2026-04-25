@@ -156,6 +156,9 @@ Full API documentation: `docs/API_CONTRACT_V1.md`
 # Unit tests
 npm test
 
+# Backend pytest suite
+npm run api:test
+
 # E2E tests (requires running app)
 npm run preflight:e2e
 
@@ -170,6 +173,7 @@ npm run web:build      # Build Next.js for production
 npm run web:lint       # Run ESLint
 npm run web:typecheck  # TypeScript type checking
 npm run api:check      # Python syntax check
+npm run api:test       # Backend pytest suite via apps/api/.venv
 npm run api:migrate    # Run database migrations
 npm run docker:up      # Start PostgreSQL in Docker
 ```
@@ -202,10 +206,11 @@ npm run release
 
 This release entrypoint now standardizes the expected sequence after a successful improvement:
 - run full local `preflight`
-- sync the workspace to configured nodes
 - publish `main` to GitHub
 - trigger `usa-vps` deployment via `/opt/jetscope/scripts/auto-deploy.sh`
 - require the VPS to deploy the exact local `HEAD` commit, not just “latest when checked”
+
+Development worker sync is opt-in and is not part of the default release path.
 
 Project deployment memory now lives in `OPERATIONS.md`. Future work should treat that file as the default operational source of truth.
 

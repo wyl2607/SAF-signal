@@ -2,9 +2,27 @@
 
 ## Current Status
 
-- Status: second-round sync hardening is implemented locally.
+- Status: release/sync hardening is committed locally; backend pytest is restored as a local gate.
 - Scope: JetScope web/API workspace, local data ignores, traceability entrypoint, release-path documentation, and worker/VPS sync boundaries.
 - Release entrypoint: `npm run release` after `source scripts/safenv`; development worker sync is opt-in.
+
+## 2026-04-25 Backend Pytest Restoration
+
+### Completed
+
+- Verified system `python3 -m pytest` is not usable because Homebrew Python 3.14 has no pytest installed.
+- Verified project venv pytest is usable: `apps/api/.venv/bin/python -m pytest tests` passed all backend tests.
+- Added `npm run api:test` so backend pytest has a stable project-local entrypoint.
+- Added `npm run api:test` to `npm run preflight` after `api:check` so compile-only validation is no longer the only API gate.
+
+### Verification
+
+- `.venv/bin/python -m pytest tests` passed: 80 tests.
+
+### Impact
+
+- Future API validation should use `npm run api:test` for backend behavior and `npm run api:check` only for Python compile/syntax checking.
+- The backend test gate currently depends on the existing `apps/api/.venv`; recreating the venv remains a separate environment bootstrap concern.
 
 ## 2026-04-25 Sync Hardening Update
 
@@ -17,11 +35,14 @@
 - Windows opt-in push sync now performs a minimal blocked-path readback after extraction for `.env`, `.env.local`, `.envrc`, `.omx`, `.automation`, and `apps/api/data`.
 - Review fixes added pullback node validation, Windows push/pull failure event emission, local/remote temporary tar cleanup, wider Windows blocked-path readback, and fail-closed release push gates.
 - Final review fix moved fail-closed push gate enforcement into `scripts/publish-to-github.sh` so direct publish and release both share the same gate.
+- Final sync review fixes added Unix blocked-path readback after rsync and require `--allow-vps-workdir` before pulling from `usa-vps:~/jetscope`.
+- Final readback compatibility fix removed GNU-only `find -printf` and made Unix `.env.*` readback recursive for macOS/BSD nodes.
 
 ### Impact
 
 - Future local-only/sensitive path changes should update `scripts/sync-excludes.sh` instead of duplicating exclude lists across sync scripts.
 - Windows opt-in sync is still overlay handoff sync, not a clean mirror; readback catches known blocked paths but does not replace a full cleanup strategy.
+- Unix sync now fails if historical blocked remnants remain after rsync; cleanup still requires a separate explicit cleanup action.
 - Default `npm run release` and direct `./scripts/publish-to-github.sh` now fail before push if `scripts/security_check.sh` or `scripts/review_push_guard.sh` is missing or not executable.
 - No real sync, pullback, publish, deploy, VPS cleanup, commit, or push was executed during this hardening pass.
 
@@ -49,6 +70,8 @@
 - `./scripts/release.sh --skip-preflight --skip-vps-deploy` failed before publish because the worktree is dirty.
 - `git diff --check` passed.
 - Final independent read-only review found no remaining severe findings. Residual risks: filename-based guards are heuristic, `origin/main` freshness still depends on fetch, and Git gates do not clean historical remote/node remnants.
+- Follow-up review flagged the existing `scripts/preflight-ui-e2e.mjs` local change as a release-gate risk because it weakens admin refresh coverage; it was not changed in this sync/publish hardening pass.
+- Final sync readback review found no remaining severe issue in Unix readback or `usa-vps` pull opt-in. Residual risk: readback is a known blocked-path check, not full sensitive-content scanning.
 
 ### Verification
 

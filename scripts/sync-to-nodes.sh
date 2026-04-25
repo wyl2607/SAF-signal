@@ -91,6 +91,42 @@ cleanup_windows_tar() {
   fi
 }
 
+verify_unix_blocked_paths_absent() {
+  local node="$1"
+  ssh "$node" 'bash -s' <<'EOF'
+set -euo pipefail
+root="$HOME/jetscope"
+blocked=(
+  ".env"
+  ".env.local"
+  ".envrc"
+  ".omx"
+  ".automation"
+  ".guard"
+  "apps/api/data"
+  "data/local-preferences.json"
+  "data/market.db"
+  "infra/postgres-data"
+  "logs"
+  "webhook-logs"
+)
+hits=()
+for item in "${blocked[@]}"; do
+  if [ -e "$root/$item" ]; then
+    hits+=("$item")
+  fi
+done
+while IFS= read -r env_file; do
+  [ -n "$env_file" ] && hits+=("${env_file#"$root/"}")
+done < <(find "$root" -type f -name '.env.*' ! -name '.env.example' ! -name '*.example' 2>/dev/null || true)
+if [ "${#hits[@]}" -gt 0 ]; then
+  printf 'Blocked paths remain after sync:\n' >&2
+  printf '  %s\n' "${hits[@]}" >&2
+  exit 1
+fi
+EOF
+}
+
 UNIX_NODES=()
 if [ "$RUN_WORKERS" -eq 1 ]; then
   UNIX_NODES+=("mac-mini" "coco")
@@ -108,7 +144,8 @@ if [ "${#UNIX_NODES[@]}" -gt 0 ]; then
   for node in "${UNIX_NODES[@]}"; do
     start=$(date +%s)
     emit_sync "$node" "started" "push" "rsync" 0 ""
-    if rsync "${RSYNC_ARGS[@]}" "${SYNC_EXCLUDES[@]}" "$SRC" "$node:~/jetscope/"; then
+    if rsync "${RSYNC_ARGS[@]}" "${SYNC_EXCLUDES[@]}" "$SRC" "$node:~/jetscope/" \
+      && { [ "$DRY_RUN" -eq 1 ] || verify_unix_blocked_paths_absent "$node"; }; then
       end=$(date +%s)
       emit_sync "$node" "success" "push" "rsync" $(((end-start)*1000)) ""
     else

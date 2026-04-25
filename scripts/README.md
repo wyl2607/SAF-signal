@@ -96,6 +96,9 @@ npm run release
 
 # Pull back from a selected node using the shared excludes
 ./scripts/sync-from-node.sh mac-mini
+
+# Pull back from the non-production USA VPS workdir only with explicit opt-in
+./scripts/sync-from-node.sh usa-vps --allow-vps-workdir
 ```
 
 Release and deploy behavior is also pinned in `../OPERATIONS.md`; treat that as the durable project memory for future sessions.
@@ -107,5 +110,6 @@ Release and deploy behavior is also pinned in `../OPERATIONS.md`; treat that as 
 - Shared reusable script infrastructure lives in `~/tools/script-core/`.
 - `usa-vps:/opt/jetscope` is the production deploy path. `usa-vps:~/jetscope` is a non-production workdir and is never synced unless explicitly requested.
 - `scripts/sync-excludes.sh` is the single sync exclude source. Update it whenever `.gitignore` or local-only path policy changes.
+- Unix worker sync performs a blocked-path readback after rsync. If historical excluded remnants remain on a node, sync fails instead of reporting a clean success.
 - Windows opt-in sync is an overlay handoff sync, not a clean mirror. It performs a blocked-path readback after extraction, but it is not a full historical cleanup of every excluded file.
 - Release fails closed before publishing when required push gates `scripts/security_check.sh` and `scripts/review_push_guard.sh` are missing or not executable.
