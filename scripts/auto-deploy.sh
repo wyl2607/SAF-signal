@@ -13,12 +13,22 @@ BUS_WRITE="/Users/yumei/tools/script-core/bin/sc-bus-write"
 PRODUCER="jetscope/scripts/auto-deploy.sh"
 FORCE_DEPLOY="${JETSCOPE_FORCE_DEPLOY:-0}"
 EXPECTED_COMMIT="${JETSCOPE_EXPECT_COMMIT:-}"
+API_HEALTH_URL="${JETSCOPE_API_HEALTH_URL:-http://127.0.0.1:8000/v1/health}"
+WEB_HEALTH_URL="${JETSCOPE_WEB_HEALTH_URL:-https://saf.meichen.beauty/}"
+HEALTH_TIMEOUT_SECONDS="${JETSCOPE_HEALTH_TIMEOUT_SECONDS:-120}"
+HEALTH_INTERVAL_SECONDS="${JETSCOPE_HEALTH_INTERVAL_SECONDS:-5}"
+CURL_MAX_TIME_SECONDS="${JETSCOPE_CURL_MAX_TIME_SECONDS:-10}"
+LOCAL_COMMIT=""
+REMOTE_COMMIT=""
+API_STATUS="000"
+WEB_STATUS="000"
+WEB_CT=""
 
 fail_deploy() {
     local summary="$1"
     local error_text="${2:-}"
     echo "[$(date -Iseconds)] ERROR: ${summary}${error_text:+ ($error_text)}" | tee -a "$LOG"
-    emit_publish_event "failed" "$summary" "$error_text" "$LOCAL_COMMIT" "$REMOTE_COMMIT"
+    emit_publish_event "failed" "$summary" "$error_text" "${LOCAL_COMMIT:-}" "${REMOTE_COMMIT:-}"
     exit 1
 }
 
@@ -38,6 +48,85 @@ emit_publish_event() {
     fi
 }
 
+resolve_origin_main() {
+    git rev-parse origin/main
+}
+
+validate_positive_integer() {
+    local name="$1"
+    local value="$2"
+    if ! [[ "$value" =~ ^[1-9][0-9]*$ ]]; then
+        fail_deploy "invalid deploy configuration" "$name must be a positive integer, got '$value'"
+    fi
+}
+
+validate_health_config() {
+    validate_positive_integer "JETSCOPE_HEALTH_TIMEOUT_SECONDS" "$HEALTH_TIMEOUT_SECONDS"
+    validate_positive_integer "JETSCOPE_HEALTH_INTERVAL_SECONDS" "$HEALTH_INTERVAL_SECONDS"
+    validate_positive_integer "JETSCOPE_CURL_MAX_TIME_SECONDS" "$CURL_MAX_TIME_SECONDS"
+    if [ "$HEALTH_INTERVAL_SECONDS" -gt "$HEALTH_TIMEOUT_SECONDS" ]; then
+        fail_deploy "invalid deploy configuration" "JETSCOPE_HEALTH_INTERVAL_SECONDS must be <= JETSCOPE_HEALTH_TIMEOUT_SECONDS"
+    fi
+    if [ "$CURL_MAX_TIME_SECONDS" -gt "$HEALTH_TIMEOUT_SECONDS" ]; then
+        fail_deploy "invalid deploy configuration" "JETSCOPE_CURL_MAX_TIME_SECONDS must be <= JETSCOPE_HEALTH_TIMEOUT_SECONDS"
+    fi
+}
+
+sleep_until_next_health_attempt() {
+    local deadline="$1"
+    local remaining=$((deadline - SECONDS))
+    if [ "$remaining" -le 0 ]; then
+        return 0
+    fi
+    if [ "$remaining" -lt "$HEALTH_INTERVAL_SECONDS" ]; then
+        sleep "$remaining"
+    else
+        sleep "$HEALTH_INTERVAL_SECONDS"
+    fi
+}
+
+wait_for_api_health() {
+    local deadline=$((SECONDS + HEALTH_TIMEOUT_SECONDS))
+    local status="000"
+
+    while [ "$SECONDS" -lt "$deadline" ]; do
+        status=$(curl -s -o /dev/null -w "%{http_code}" "$API_HEALTH_URL" --connect-timeout 5 --max-time "$CURL_MAX_TIME_SECONDS" 2>/dev/null || true)
+        status="${status:-000}"
+        if [ "$status" = "200" ]; then
+            API_STATUS="$status"
+            return 0
+        fi
+        echo "[$(date -Iseconds)] Waiting for API health: status $status" | tee -a "$LOG"
+        sleep_until_next_health_attempt "$deadline"
+    done
+
+    API_STATUS="$status"
+    return 1
+}
+
+wait_for_web_health() {
+    local deadline=$((SECONDS + HEALTH_TIMEOUT_SECONDS))
+    local status="000"
+    local content_type=""
+
+    while [ "$SECONDS" -lt "$deadline" ]; do
+        status=$(curl -s -o /dev/null -w "%{http_code}" "$WEB_HEALTH_URL" --connect-timeout 5 --max-time "$CURL_MAX_TIME_SECONDS" 2>/dev/null || true)
+        status="${status:-000}"
+        content_type=$(curl -sI "$WEB_HEALTH_URL" --connect-timeout 5 --max-time "$CURL_MAX_TIME_SECONDS" 2>/dev/null | grep -i "content-type:" | head -1 || true)
+        if [ "$status" = "200" ] && echo "$content_type" | grep -qi "text/html"; then
+            WEB_STATUS="$status"
+            WEB_CT="$content_type"
+            return 0
+        fi
+        echo "[$(date -Iseconds)] Waiting for web health: status $status content-type '$content_type'" | tee -a "$LOG"
+        sleep_until_next_health_attempt "$deadline"
+    done
+
+    WEB_STATUS="$status"
+    WEB_CT="$content_type"
+    return 1
+}
+
 cd "$DEPLOY_DIR"
 
 # Prevent concurrent deployments
@@ -51,9 +140,15 @@ fi
 echo $$ > "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
 
-# Check if GitHub has new commits
+# Check if GitHub has new commits. Fetch first so deploy only advances to the
+# locally resolved origin/main object and can enforce fast-forward semantics.
 LOCAL_COMMIT=$(git rev-parse HEAD)
-REMOTE_COMMIT=$(git ls-remote origin main | awk '{print $1}')
+validate_health_config
+echo "[$(date -Iseconds)] Fetching origin/main..." | tee -a "$LOG"
+if ! git fetch origin main:refs/remotes/origin/main >> "$LOG" 2>&1; then
+    fail_deploy "failed to fetch origin/main" "git fetch origin main:refs/remotes/origin/main failed"
+fi
+REMOTE_COMMIT=$(resolve_origin_main)
 
 if [ -n "$EXPECTED_COMMIT" ] && [ "$REMOTE_COMMIT" != "$EXPECTED_COMMIT" ]; then
     fail_deploy "expected commit not yet visible on origin/main" "expected $EXPECTED_COMMIT got $REMOTE_COMMIT"
@@ -78,9 +173,14 @@ if [ -n "$(git status --porcelain)" ]; then
     fail_deploy "deploy directory is dirty" "local modifications detected in $DEPLOY_DIR"
 fi
 
-# Pull latest
-echo "[$(date -Iseconds)] Pulling origin/main..." | tee -a "$LOG"
-git pull origin main >> "$LOG" 2>&1
+# Advance production checkout only by fast-forwarding to fetched origin/main.
+echo "[$(date -Iseconds)] Fast-forwarding to origin/main..." | tee -a "$LOG"
+if ! git merge-base --is-ancestor "$LOCAL_COMMIT" "$REMOTE_COMMIT" >> "$LOG" 2>&1; then
+    fail_deploy "deploy checkout cannot fast-forward to origin/main" "local $LOCAL_COMMIT remote $REMOTE_COMMIT"
+fi
+if ! git merge --ff-only origin/main >> "$LOG" 2>&1; then
+    fail_deploy "failed to fast-forward deploy checkout" "git merge --ff-only origin/main failed"
+fi
 DEPLOYED_COMMIT=$(git rev-parse HEAD)
 
 if [ "$DEPLOYED_COMMIT" != "$REMOTE_COMMIT" ]; then
@@ -91,12 +191,12 @@ fi
 echo "[$(date -Iseconds)] Building API..." | tee -a "$LOG"
 docker-compose -f docker-compose.prod.yml down >> "$LOG" 2>&1 || true
 docker rm -f jetscope-api >> "$LOG" 2>&1 || true
-docker-compose -f docker-compose.prod.yml up --build -d api >> "$LOG" 2>&1
+if ! docker-compose -f docker-compose.prod.yml up --build -d api >> "$LOG" 2>&1; then
+    fail_deploy "api container build/start failed during auto-deploy" "docker-compose up --build -d api failed"
+fi
 
 # Wait for API to be ready
-sleep 5
-API_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/v1/health --connect-timeout 5 --max-time 10 2>/dev/null || echo "000")
-if [ "$API_STATUS" != "200" ]; then
+if ! wait_for_api_health; then
     fail_deploy "api health check failed after auto-deploy" "api status $API_STATUS"
 fi
 
@@ -126,13 +226,12 @@ if [ ! -f ".next/BUILD_ID" ]; then
 fi
 
 echo "[$(date -Iseconds)] Web build OK. Restarting service..." | tee -a "$LOG"
-systemctl restart jetscope-web.service
-sleep 3
+if ! systemctl restart jetscope-web.service >> "$LOG" 2>&1; then
+    fail_deploy "web service restart failed during auto-deploy" "systemctl restart jetscope-web.service failed"
+fi
 
 # Verify Web serves real HTML (not API proxy)
-WEB_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://saf.meichen.beauty/ --connect-timeout 5 --max-time 10 2>/dev/null || echo "000")
-WEB_CT=$(curl -sI https://saf.meichen.beauty/ --connect-timeout 5 --max-time 10 2>/dev/null | grep -i "content-type:" | head -1 || echo "")
-if [ "$WEB_STATUS" = "200" ] && echo "$WEB_CT" | grep -qi "text/html"; then
+if wait_for_web_health; then
     echo "[$(date -Iseconds)] Deploy SUCCESS! Web: $WEB_STATUS (HTML), API: $API_STATUS" | tee -a "$LOG"
     emit_publish_event "success" "auto-deploy completed successfully" "" "$LOCAL_COMMIT" "$REMOTE_COMMIT"
 else

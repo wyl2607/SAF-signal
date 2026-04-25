@@ -40,12 +40,15 @@ Development worker sync is now opt-in. It is not part of the default production 
 - `scripts/publish-to-github.sh` also runs the same push gates directly so it cannot bypass release safety.
 - `.gitignore` is not a node-sync safety boundary; changes to local-only or sensitive ignore rules must be mirrored in `scripts/sync-excludes.sh`.
 - The VPS deploy must target the exact commit that was just published from local.
+- The VPS deploy fetches `origin/main` into `refs/remotes/origin/main` first and only advances the production checkout with `git merge --ff-only origin/main`.
 - The VPS deploy must fail hard if:
   - origin/main is not yet at the expected commit
+  - the deploy checkout cannot fast-forward to origin/main
   - the deploy tree does not advance to that commit
-  - API health check fails
+  - API health check fails within the bounded retry window
   - web build times out or fails
-  - final web health check fails
+  - final web health check fails within the bounded retry window
+- Auto-deploy failure handling is fail-closed and observable, but not transactional rollback. If API/Web restart or health checks fail after a fast-forward, use the deployment logs plus explicit operator recovery; do not assume automatic rollback.
 - Future AI runs should prefer `OPERATIONS.md` first for deployment behavior instead of re-checking scattered scripts.
 
 ## Allowed Variants
