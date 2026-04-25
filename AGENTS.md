@@ -25,11 +25,12 @@ source scripts/safenv
 
 ## 关键命令
 
+- `npm run release`（默认发布入口；会串联 preflight、GitHub 发布、VPS 部署；节点同步为显式 opt-in）
 - `npm run preflight`
 - `npm run web:gate`
 - `npm run api:check`
-- `./scripts/publish-to-github.sh`
-- `./scripts/sync-to-nodes.sh`
+- `./scripts/publish-to-github.sh`（局部重跑入口，非默认发布路径）
+- `./scripts/sync-to-nodes.sh`（高风险节点同步，非默认发布路径）
 
 ## 当前架构重点
 
@@ -44,3 +45,36 @@ source scripts/safenv
 - 不得提交 `.env*`、密钥、本地数据库、日志、构建产物、`node_modules/` 或内部交付归档
 - 新增文档应面向公开仓库，避免写入私人机器路径、内部节点名或不可复现的本地流程
 - 发布和部署规则以 `OPERATIONS.md` 为准
+- 非琐碎任务开始前，先查 `/Users/yumei/tools/automation/runtime/ai-trace/*.jsonl`
+- 新的稳定解法必须写回 ledger
+
+## 发布安全边界
+
+- 推送或发布前必须遵守 `/Users/yumei/.codex/memories/UNIVERSAL_AI_DEV_POLICY.md`
+- 发布前先运行 `npm run preflight`
+- 推送或默认发布必须先运行 `scripts/security_check.sh` 和 `scripts/review_push_guard.sh origin/main`；若 gate 缺失，发布脚本应 fail closed，不得自行伪造通过结果
+- `.gitignore` 不等于节点同步安全边界；新增本地/敏感忽略规则时，也要同步检查 `scripts/sync-excludes.sh`
+
+## Cross-AI Traceability (Mandatory)
+
+Before deep debugging or non-trivial implementation:
+
+1. Read `/Users/yumei/tools/automation/workspace-guides/ai-collaboration-traceability-standard.md`.
+2. Search shared ledgers first:
+   - `/Users/yumei/tools/automation/runtime/ai-trace/issue-ledger.jsonl`
+   - `/Users/yumei/tools/automation/runtime/ai-trace/solution-ledger.jsonl`
+3. Then load this project's `INCIDENT_LOG.md` and `PROJECT_PROGRESS.md` if present.
+
+Use:
+
+```bash
+bash /Users/yumei/tools/automation/scripts/ai-trace.sh find "<keyword>"
+```
+
+If a stable root cause or reusable fix is confirmed, write it back immediately:
+
+```bash
+bash /Users/yumei/tools/automation/scripts/ai-trace.sh issue "<scope>" "<symptom>" "<root_cause>" "<fix>" "<verification>" "<artifacts>"
+bash /Users/yumei/tools/automation/scripts/ai-trace.sh solution "<scope>" "<problem_pattern>" "<solution_pattern>" "<verification>" "<artifacts>"
+bash /Users/yumei/tools/automation/scripts/ai-trace.sh session "<scope>" "<summary>" "<next_step>" "<linked_issue>"
+```

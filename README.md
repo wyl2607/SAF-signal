@@ -157,6 +157,18 @@ npm run preflight
 
 `npm run api:check` auto-detects `JETSCOPE_PYTHON_BIN`, `PYTHON_BIN`, the API virtual environment, or the platform default Python interpreter.
 
+```bash
+npm run web:build      # Build Next.js for production
+npm run web:lint       # Run ESLint
+npm run web:typecheck  # TypeScript type checking
+npm run api:check      # Python syntax check
+npm run api:test       # Backend pytest suite via apps/api/.venv
+npm run api:openapi:check # OpenAPI drift check
+npm run api:migrate    # Run database migrations
+npm run docker:up      # Start PostgreSQL in Docker
+npm run preflight:e2e  # E2E tests (requires running app/build)
+```
+
 ### Deployment
 
 The canonical release path is documented in `OPERATIONS.md`:
@@ -166,6 +178,16 @@ cd ~/projects/jetscope
 source scripts/safenv
 npm run release
 ```
+
+This release entrypoint now standardizes the expected sequence after a successful improvement:
+- run full local `preflight`
+- publish `main` to GitHub
+- trigger `usa-vps` deployment via `/opt/jetscope/scripts/auto-deploy.sh`
+- require the VPS to deploy the exact local `HEAD` commit, not just “latest when checked”
+
+Development worker sync is opt-in and is not part of the default release path.
+
+Project deployment memory now lives in `OPERATIONS.md`. Future work should treat that file as the default operational source of truth.
 
 Production-style Docker and nginx examples are in `infra/` and `docker-compose.prod.yml`.
 

@@ -1,5 +1,8 @@
 import type { ResearchDecisionBrief } from '@/lib/portfolio-read-model';
+import type { Route } from 'next';
 import Link from 'next/link';
+
+const RESEARCH_ROUTE = '/research' as Route;
 
 type Props = {
   brief: ResearchDecisionBrief;
@@ -25,7 +28,7 @@ export function ResearchDecisionBriefCard({ brief, compact = false }: Props) {
           <p className="text-xs uppercase tracking-[0.18em] opacity-75">Research decision layer</p>
           <h3 className="mt-2 text-xl font-semibold text-white">{brief.headline}</h3>
         </div>
-        <Link href="/research" className="rounded-full border border-white/15 px-3 py-1 text-xs font-semibold text-white/90 transition hover:border-white/40">
+        <Link href={RESEARCH_ROUTE} className="rounded-full border border-white/15 px-3 py-1 text-xs font-semibold text-white/90 transition hover:border-white/40">
           Open signals
         </Link>
       </div>
